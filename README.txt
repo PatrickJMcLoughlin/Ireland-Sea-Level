@@ -1,2 +1,0 @@
-Code and data associated with "A Century of Sea-Level Change in Ireland (1925-2024)" paper. Link: TBC
-Additional code used in the study, including code for atmospheric corrections and other supporting analyses, is available upon request. Link: TBC
