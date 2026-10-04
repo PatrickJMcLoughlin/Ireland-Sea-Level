@@ -3763,7 +3763,7 @@ df_cv <- df_input
 cv_all <- cross_val_check(
   data = df_cv,
   model_type = "ni_gam_decomp",
-  n_iterations = 10000,  
+  n_iterations = 15000,  
   n_burnin = 2000,   
   n_thin = 5,
   n_chains = 3,
