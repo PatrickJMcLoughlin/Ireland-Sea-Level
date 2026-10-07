@@ -45,10 +45,9 @@
 # used as the working directory so that the relative file
 # paths used below remain unchanged.
 #
-# The large model output file model_output_setup2.RDS is archived on Zenodo
-# and is downloaded automatically by the script if it is not already present
-# in the local Data folder. If RERUN_MODEL is set to TRUE, a new model output
-# file is generated locally and saved to the Data folder.
+# The model output file model_output_setup2.RDS is generated
+# by the analysis and is subsequently used to extend the
+# prediction grids for the individual sites.
 #
 # This version retains all rate outputs and plots and applies
 # consistent uncertainty handling. All displayed "95% CI"
@@ -3764,7 +3763,7 @@ df_cv <- df_input
 cv_all <- cross_val_check(
   data = df_cv,
   model_type = "ni_gam_decomp",
-  n_iterations = 10000,  
+  n_iterations = 15000,  
   n_burnin = 2000,   
   n_thin = 5,
   n_chains = 3,
