@@ -4042,15 +4042,15 @@ cv_plot <- ggplot(
 ) +
 
   geom_errorbar(
-    aes(
-      ymin = lwr_PI,
-      ymax = upr_PI
-    ),
-    width = 0,
-    colour = "grey40",
-    alpha = 0.6,
-    na.rm = TRUE
-  ) +
+    aes(
+      ymin = pmin(lwr_PI, upr_PI),
+      ymax = pmax(lwr_PI, upr_PI)
+    ),
+    width = 0,
+    colour = "grey40",
+    alpha = 0.6,
+    na.rm = TRUE
+  ) +
 
   geom_point(
     colour = "red",
