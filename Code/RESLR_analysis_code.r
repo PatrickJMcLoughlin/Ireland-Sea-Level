@@ -3737,22 +3737,37 @@ ggsave(
   bg = "white"
 )
 
+
 # =========================================================
 # PART D: CROSS-VALIDATION
 # =========================================================
 # Tests the predictive performance of the RESLR model using
-# cross-validation.
+# three-fold cross-validation.
 #
-# Calculates overall and site-level error metrics and
-# generates the cross-validation and residual plots used
-# in the manuscript.
-# Figures 6 and 7 in the manuscript correspond to the
-# cross-validation outputs generated in this section.
-# Figure numbering follows the order of figures in the manuscript.
+# Calculates overall and site-level error metrics, evaluates
+# 95% prediction interval coverage, and generates the
+# cross-validation and residual plots used in the manuscript.
+#
+# Figure 6: True versus predicted relative sea level.
+# Figure 7: Cross-validation residuals.
+#
+# Existing figure filenames, output directory, dimensions,
+# resolution, and relative-path behaviour are preserved.
 # =========================================================
 
+
+# =========================================================
+# PREPARE CROSS-VALIDATION DATA
+# =========================================================
+
+# Reuse the input prepared in the earlier MODEL INPUT section.
+# This retains the manually specified GIA rates and fixed
+# GIA uncertainty of 0.3 mm/yr.
+
 df_cv <- df_input
-# alternatively:
+
+# Alternatively, if this is the intended model input:
+#
 # df_cv <- site_combined %>%
 #   filter(Age <= 2025) %>%
 #   mutate(
@@ -3760,11 +3775,16 @@ df_cv <- df_input
 #     linear_rate_err = 0.3
 #   )
 
+
+# =========================================================
+# RUN CROSS-VALIDATION
+# =========================================================
+
 cv_all <- cross_val_check(
   data = df_cv,
   model_type = "ni_gam_decomp",
-  n_iterations = 15000,  
-  n_burnin = 2000,   
+  n_iterations = 15000,
+  n_burnin = 2000,
   n_thin = 5,
   n_chains = 3,
   spline_nseg_t = 2,
@@ -3779,20 +3799,39 @@ cv_all <- cross_val_check(
 # CROSS-VALIDATION OUTPUT DIRECTORY
 # =========================================================
 
-if (!dir.exists("plots_cross_validation"))
-  dir.create("plots_cross_validation")
+# Preserve the original relative output directory.
+# Files are saved relative to the current R working directory.
+
+plot_folder <- "plots_cross_validation"
+
+if (!dir.exists(plot_folder)) {
+  dir.create(
+    plot_folder,
+    recursive = TRUE
+  )
+}
 
 
 # =========================================================
-# OVERALL CROSS-VALIDATION COVERAGE
+# OVERALL PREDICTION INTERVAL COVERAGE
 # =========================================================
 
-message(
-  "Overall coverage (95% PI): ",
-  round(cv_all$total_coverage * 100, 2),
-  "%"
-)
+if (is.null(cv_all$total_coverage) ||
+    length(cv_all$total_coverage) != 1 ||
+    !is.finite(cv_all$total_coverage)) {
+  warning(
+    "Overall prediction interval coverage is missing ",
+    "or non-finite."
+  )
+} else {
+  message(
+    "Overall coverage (95% PI): ",
+    round(cv_all$total_coverage * 100, 2),
+    "%"
+  )
+}
 
+cat("\nCoverage by site:\n")
 print(cv_all$coverage_by_site)
 
 
@@ -3800,69 +3839,207 @@ print(cv_all$coverage_by_site)
 # PREDICTION INTERVAL WIDTHS
 # =========================================================
 
-prediction_interval_size <- cv_all$prediction_interval_size %>%
-  mutate(PI_width = abs(PI_width))
+prediction_interval_size <-
+  cv_all$prediction_interval_size %>%
+  mutate(
+    PI_width = abs(PI_width)
+  )
 
+cat("\nPrediction interval widths:\n")
 print(prediction_interval_size)
 
 
 # =========================================================
-# ERROR METRICS
+# EXTRACT CROSS-VALIDATION PREDICTIONS
 # =========================================================
 
-cv_data <- cv_all$true_pred_plot$data %>%
-  mutate(error = true_RSL - pred_RSL)
+cv_data <- cv_all$true_pred_plot$data
 
-ME_overall   <- mean(cv_data$error)
-MAE_overall  <- mean(abs(cv_data$error))
-RMSE_overall <- sqrt(mean(cv_data$error^2))
+# Check that the required prediction columns are present.
 
-cat("\nOverall Error Metrics\n")
-cat("---------------------\n")
+required_cols <- c(
+  "true_RSL",
+  "pred_RSL",
+  "SiteName",
+  "lwr_PI",
+  "upr_PI"
+)
+
+missing_cols <- setdiff(
+  required_cols,
+  names(cv_data)
+)
+
+if (length(missing_cols) > 0) {
+  stop(
+    "Missing required columns in cross-validation results: ",
+    paste(missing_cols, collapse = ", ")
+  )
+}
+
+# Check the residual-plot year column separately.
+# Do not fabricate or infer Age if it is missing.
+
+age_available <- "Age" %in% names(cv_data)
+
+if (!age_available) {
+  warning(
+    "Age is missing from the returned cross-validation data. ",
+    "Figure 7 cannot be generated unless Age is restored ",
+    "using a reliable observation identifier."
+  )
+}
+
+
+# =========================================================
+# CALCULATE PREDICTION ERRORS
+# =========================================================
+
+# Positive error means the observed value exceeds the prediction.
+
+cv_data <- cv_data %>%
+  mutate(
+    error = true_RSL - pred_RSL
+  )
+
+
+# =========================================================
+# VALIDATE PREDICTIONS FOR ERROR METRICS
+# =========================================================
+
+# Exclude non-finite observations and predictions from numerical
+# error metrics. Retain the original cv_data for diagnostics.
+
+valid_prediction <- (
+  is.finite(cv_data$true_RSL) &
+  is.finite(cv_data$pred_RSL) &
+  is.finite(cv_data$error)
+)
+
+cv_metrics_data <- cv_data %>%
+  filter(valid_prediction)
+
+n_total <- nrow(cv_data)
+n_valid <- nrow(cv_metrics_data)
+n_excluded <- n_total - n_valid
+
+cat("\nCross-validation prediction checks\n")
+cat("---------------------------------\n")
+cat("Total returned predictions:", n_total, "\n")
+cat("Valid predictions:", n_valid, "\n")
+cat("Excluded predictions:", n_excluded, "\n")
+
+if (n_valid == 0) {
+  stop(
+    "No valid cross-validation predictions are available."
+  )
+}
+
+if (n_excluded > 0) {
+  warning(
+    n_excluded,
+    " prediction(s) were excluded from error metrics ",
+    "because observations or predictions were non-finite."
+  )
+}
+
+
+# =========================================================
+# OVERALL ERROR METRICS
+# =========================================================
+
+ME_overall <- mean(
+  cv_metrics_data$error
+)
+
+MAE_overall <- mean(
+  abs(cv_metrics_data$error)
+)
+
+RMSE_overall <- sqrt(
+  mean(cv_metrics_data$error^2)
+)
+
+cat("\nOverall Cross-Validation Error Metrics\n")
+cat("-------------------------------------\n")
+cat("Number of valid predictions:", n_valid, "\n")
 cat("ME   :", round(ME_overall, 3), "\n")
 cat("MAE  :", round(MAE_overall, 3), "\n")
-cat("RMSE :", round(RMSE_overall, 3), "\n\n")
+cat("RMSE :", round(RMSE_overall, 3), "\n")
 
 
 # =========================================================
 # SITE-LEVEL ERROR METRICS
 # =========================================================
 
-site_metrics <- cv_data %>%
+site_metrics <- cv_metrics_data %>%
   group_by(SiteName) %>%
   summarise(
-    ME   = mean(error),
-    MAE  = mean(abs(error)),
+    n = n(),
+    ME = mean(error),
+    MAE = mean(abs(error)),
     RMSE = sqrt(mean(error^2)),
     .groups = "drop"
   )
+
+cat("\nSite-Level Cross-Validation Error Metrics\n")
+cat("-----------------------------------------\n")
 
 print(site_metrics)
 
 
 # =========================================================
-# CROSS-VALIDATION PLOT
-# FIXED AXES + 95% PREDICTION INTERVALS
+# SAVE ERROR METRICS
+# =========================================================
+
+# These CSV files are additional outputs from the revised
+# version. They use the existing cross-validation directory.
+
+write.csv(
+  site_metrics,
+  file.path(
+    plot_folder,
+    "cross_validation_site_error_metrics.csv"
+  ),
+  row.names = FALSE
+)
+
+write.csv(
+  data.frame(
+    n = n_valid,
+    n_excluded = n_excluded,
+    ME = ME_overall,
+    MAE = MAE_overall,
+    RMSE = RMSE_overall
+  ),
+  file.path(
+    plot_folder,
+    "cross_validation_overall_error_metrics.csv"
+  ),
+  row.names = FALSE
+)
+
+
+# =========================================================
+# FIGURE 6: TRUE VERSUS PREDICTED RELATIVE SEA LEVEL
 # =========================================================
 #
-# Figure 6 uses the prediction intervals returned by
-# cross_val_check().
+# Points show returned cross-validation predictions.
+# Vertical error bars show the returned prediction intervals.
+# Confirm that these are genuine held-out 95% prediction
+# intervals in the implementation of cross_val_check().
 #
-# These are prediction intervals (PI), not posterior
-# credible intervals.
+# Fixed axes allow comparison across sites.
+# Original figure dimensions and resolution are preserved.
 # =========================================================
 
 cv_plot <- ggplot(
-  cv_data,
+  cv_metrics_data,
   aes(
     x = true_RSL,
     y = pred_RSL
   )
 ) +
-
-  # -------------------------------------------------------
-  # 95% prediction intervals
-  # -------------------------------------------------------
 
   geom_errorbar(
     aes(
@@ -3871,22 +4048,16 @@ cv_plot <- ggplot(
     ),
     width = 0,
     colour = "grey40",
-    alpha = 0.6
+    alpha = 0.6,
+    na.rm = TRUE
   ) +
-
-  # -------------------------------------------------------
-  # predicted points
-  # -------------------------------------------------------
 
   geom_point(
     colour = "red",
     size = 2,
-    alpha = 0.8
+    alpha = 0.8,
+    na.rm = TRUE
   ) +
-
-  # -------------------------------------------------------
-  # 1:1 line
-  # -------------------------------------------------------
 
   geom_abline(
     intercept = 0,
@@ -3894,10 +4065,6 @@ cv_plot <- ggplot(
     colour = "black",
     linewidth = 0.6
   ) +
-
-  # -------------------------------------------------------
-  # same axes for every site
-  # -------------------------------------------------------
 
   facet_wrap(
     ~SiteName,
@@ -3950,9 +4117,11 @@ print(cv_plot)
 # SAVE FIGURE 6
 # =========================================================
 
+# Original filename, dimensions, resolution and output path.
+
 ggsave(
   filename = file.path(
-    "plots_cross_validation",
+    plot_folder,
     "Figure_6_cross_validation_true_vs_predicted.png"
   ),
   plot = cv_plot,
@@ -3963,89 +4132,135 @@ ggsave(
 
 
 # =========================================================
-# PUBLICATION RESIDUAL PLOT
+# FIGURE 7: CROSS-VALIDATION RESIDUALS
 # =========================================================
 
-cv_residuals <- cv_data %>%
-  mutate(
-    residual = true_RSL - pred_RSL
+# Figure 7 requires the observation year associated with
+# each returned cross-validation prediction.
+#
+# If Age is absent, do not guess the year or join by row order.
+# Figure 6 and the error metrics have already been produced.
+
+if (age_available) {
+
+  cv_residuals <- cv_metrics_data %>%
+    filter(
+      is.finite(Age)
+    ) %>%
+    mutate(
+      residual = true_RSL - pred_RSL
+    )
+
+  if (nrow(cv_residuals) == 0) {
+
+    warning(
+      "No valid observations with finite Age are available. ",
+      "Figure 7 was not generated."
+    )
+
+  } else {
+
+    if (nrow(cv_residuals) < nrow(cv_metrics_data)) {
+      warning(
+        nrow(cv_metrics_data) - nrow(cv_residuals),
+        " valid prediction(s) were omitted from Figure 7 ",
+        "because Age was missing or non-finite."
+      )
+    }
+
+    residual_plot_pub <- ggplot(
+      cv_residuals,
+      aes(
+        x = Age,
+        y = residual,
+        colour = SiteName
+      )
+    ) +
+
+      geom_point(
+        size = 2.2,
+        alpha = 0.8
+      ) +
+
+      geom_hline(
+        yintercept = 0,
+        linetype = "dashed",
+        linewidth = 0.6
+      ) +
+
+      facet_wrap(
+        ~SiteName,
+        scales = "fixed"
+      ) +
+
+      labs(
+        title = "Cross-validation residuals",
+        x = "Year",
+        y = "Residual (Observed RSL - Predicted RSL, m)"
+      ) +
+
+      theme_bw() +
+
+      theme(
+        legend.position = "none",
+        strip.text = element_text(
+          size = 11,
+          face = "bold"
+        ),
+        axis.text = element_text(
+          size = 10
+        ),
+        axis.title = element_text(
+          size = 12,
+          face = "bold"
+        ),
+        plot.title = element_text(
+          size = 14,
+          face = "bold",
+          hjust = 0.5
+        ),
+        panel.grid.minor = element_blank()
+      )
+
+
+    # =======================================================
+    # DISPLAY FIGURE 7
+    # =======================================================
+
+    print(residual_plot_pub)
+
+
+    # =======================================================
+    # SAVE FIGURE 7
+    # =======================================================
+
+    # Original filename, dimensions, resolution and output path.
+
+    ggsave(
+      filename = file.path(
+        plot_folder,
+        "Figure_7_cross_validation_residuals.png"
+      ),
+      plot = residual_plot_pub,
+      width = 12,
+      height = 8,
+      dpi = 600
+    )
+
+  }
+
+} else {
+
+  message(
+    "Figure 7 was skipped because Age is absent from ",
+    "the returned predictions. Restore Age using a reliable ",
+    "observation identifier, then rerun Part D."
   )
 
-
-residual_plot_pub <- ggplot(
-  cv_residuals,
-  aes(
-    x = Age,
-    y = residual,
-    colour = SiteName
-  )
-) +
-
-  geom_point(
-    size = 2.2,
-    alpha = 0.8
-  ) +
-
-  geom_hline(
-    yintercept = 0,
-    linetype = "dashed",
-    linewidth = 0.6
-  ) +
-
-  facet_wrap(
-    ~SiteName,
-    scales = "fixed"
-  ) +
-
-  labs(
-    title = "Cross-validation residuals",
-    x = "Year",
-    y = "Residual (Observed RSL - Predicted RSL, m)"
-  ) +
-
-  theme_bw() +
-
-  theme(
-    legend.position = "none",
-    strip.text = element_text(
-      size = 11,
-      face = "bold"
-    ),
-    axis.text = element_text(
-      size = 10
-    ),
-    axis.title = element_text(
-      size = 12,
-      face = "bold"
-    ),
-    plot.title = element_text(
-      size = 14,
-      face = "bold",
-      hjust = 0.5
-    ),
-    panel.grid.minor = element_blank()
-  )
+}
 
 
 # =========================================================
-# DISPLAY FIGURE 7
+# END OF PART D: CROSS-VALIDATION
 # =========================================================
-
-print(residual_plot_pub)
-
-
-# =========================================================
-# SAVE FIGURE 7
-# =========================================================
-
-ggsave(
-  filename = file.path(
-    "plots_cross_validation",
-    "Figure_7_cross_validation_residuals.png"
-  ),
-  plot = residual_plot_pub,
-  width = 12,
-  height = 8,
-  dpi = 600
-)
 
