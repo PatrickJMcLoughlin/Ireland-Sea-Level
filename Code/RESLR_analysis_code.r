@@ -11,6 +11,7 @@
 #
 # "A Century of Sea-Level Change in Ireland (1925–2024)"
 #
+# The Irish tide-gauge records have been atmospherically corrected prior to analysis.
 # Part A performs the main RESLR modelling, posterior
 # calculations, site-rate analysis, and associated plots.
 #
