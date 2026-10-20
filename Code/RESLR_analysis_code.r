@@ -255,6 +255,21 @@ if (!dir.exists("reslr")) {
     "Please download and extract the complete Data folder."
   )
 }
+# ---------------------------------------------------------
+# CREATE MAIN ANALYSIS OUTPUT FOLDER
+# ---------------------------------------------------------
+
+# Create the folder for the main global mean sea-level plots
+plot_dir <- file.path(
+  getwd(),
+  "plots_gm_modelsetup2"
+)
+
+dir.create(
+  plot_dir,
+  showWarnings = FALSE,
+  recursive = TRUE
+)
 
 
 # =========================================================
