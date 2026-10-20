@@ -1,6 +1,6 @@
 Code and Data
 
-Code and data associated with A Century of Sea-Level Change in Ireland (1925–2024).
+Code and data associated with A Century of Sea-Level Change in Ireland (1925–2024).    
 
 Reproducibility note: The analysis uses a fixed random seed to support reproducibility. 
 However, results reproduced on different computers or software environments may differ slightly 
