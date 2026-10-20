@@ -11,7 +11,6 @@
 #
 # "A Century of Sea-Level Change in Ireland (1925–2024)"
 #
-# The Irish tide-gauge records have been atmospherically corrected prior to analysis.
 # Part A performs the main RESLR modelling, posterior
 # calculations, site-rate analysis, and associated plots.
 #
@@ -41,10 +40,11 @@
 # The Data/reslr subfolder contains the local R source files
 # and JAGS model file required by the RESLR analysis.
 #
-# The Code and Data folders should be downloaded together
-# from the GitHub repository. The repository root should be
-# used as the working directory so that the relative file
-# paths used below remain unchanged.
+# Download and extract the complete GitHub repository.
+# When prompted, select the extracted Data folder.
+# The script sets this as the working directory automatically,
+# so the Code folder does not need to be the working directory.
+#
 #
 # The model output file model_output_setup2.RDS is generated
 # by the analysis and is subsequently used to extend the
@@ -145,32 +145,138 @@ library(ggplot2)
 library(dplyr)
 
 
-# =========================================================
-# WORKING DIRECTORY
-# =========================================================
-# =========================================================
-# WORKING DIRECTORY + ZENODO MODEL OUTPUT
-# =========================================================
-#
-# The script downloads the file automatically if it is not
-# already present in the Data folder.
-#
-# IMPORTANT:
-# Run this script with the GitHub repository root as the
-# working directory.
-# Reproducible random operations
-set.seed(1234)
 
+# =========================================================
+# WORKING DIRECTORY AND INPUT FILE CHECKS
+# =========================================================
+# USER INSTRUCTIONS
+# ---------------------------------------------------------
+# 1. Download the complete Data folder from:
+#    https://github.com/PatrickJMcLoughlin/Ireland-Sea-Level/tree/main/Data
+#
+# 2. If downloaded as a ZIP file, extract it before proceeding.
+#
+# 3. When prompted, select the extracted Data folder.
+#
+# The selected Data folder should contain:
+#    - The six Irish tide-gauge CSV files
+#    - observed_and_projected_change_in_global_mean_sea_level.csv
+#    - The reslr subfolder containing the required R scripts
+#      and JAGS model file
+#
+# The working directory is set automatically to the selected
+# Data folder. The Code folder is not required to locate these
+# input files.
+#
+# OUTPUT FOLDERS
+# ---------------------------------------------------------
+# The analysis uses the following default output folders:
+#
+#    plots_gm_modelsetup2/
+#        plots_cross_validation/
+#
+# These folders are created by the relevant plotting code
+# when figures are saved. Their default names can be changed
+# in the corresponding plotting sections if required.
+#
+# Main analysis figures:
+#    plots_gm_modelsetup2/
+#
+# Cross-validation figures:
+#    plots_gm_modelsetup2/plots_cross_validation/
+# =========================================================
+
+
+# ---------------------------------------------------------
+# SELECT THE DOWNLOADED DATA FOLDER
+# ---------------------------------------------------------
+# Select the Data folder using RStudio.
+# Requires the rstudioapi package and an active RStudio session.
+
+if (!requireNamespace("rstudioapi", quietly = TRUE) ||
+    !rstudioapi::isAvailable()) {
+  stop(
+    "Please run this script in RStudio to select the Data folder."
+  )
+}
+
+data_dir <- rstudioapi::selectDirectory(
+  caption = "Select the downloaded Ireland-Sea-Level Data folder",
+  path = getwd()
+)
+
+# Stop if the user cancels folder selection
+if (length(data_dir) == 0 ||
+    is.na(data_dir) ||
+    !nzchar(data_dir)) {
+  stop(
+    "No folder selected. Please select the downloaded Data folder."
+  )
+}
+
+# Set the working directory to the selected Data folder
+setwd(data_dir)
+
+
+# ---------------------------------------------------------
+# CHECK REQUIRED INPUT FILES
+# ---------------------------------------------------------
+
+required_files <- c(
+  "Malin_Head_reslr.csv",
+  "Belfast_reslr.csv",
+  "Dublin_Port_reslr.csv",
+  "Galway_reslr.csv",
+  "Cork_reslr.csv",
+  "Tarbert_reslr.csv",
+  "observed_and_projected_change_in_global_mean_sea_level.csv"
+)
+
+missing_files <- required_files[
+  !file.exists(required_files)
+]
+
+if (length(missing_files) > 0) {
+  stop(
+    "The selected folder is missing the following required files:\n",
+    paste(missing_files, collapse = "\n"),
+    "\n\nPlease select the correct Data folder."
+  )
+}
+
+
+# ---------------------------------------------------------
+# CHECK RESLR SUBFOLDER
+# ---------------------------------------------------------
+
+if (!dir.exists("reslr")) {
+  stop(
+    "The selected Data folder does not contain the reslr subfolder.\n",
+    "Please download and extract the complete Data folder."
+  )
+}
+
+
+# =========================================================
+# END OF WORKING DIRECTORY AND INPUT FILE CHECKS
+# =========================================================
+
+
+# =========================================================
+# REPRODUCIBILITY
+# =========================================================
+# Makes random operations reproducible where supported.
+set.seed(1234)
 
 # =========================================================
 # LOAD RESLR FUNCTIONS
 # =========================================================
 
-source("Data/reslr/match.closest.R")
-source("Data/reslr/cross_val_check.R")
-source("Data/reslr/internal_functions_old.R")
-source("Data/reslr/reslr_load.R")
-source("Data/reslr/reslr_mcmc_old.R")
+source("reslr/match.closest.R")
+source("reslr/cross_val_check.R")
+source("reslr/internal_functions_old.R")
+source("reslr/reslr_load.R")
+source("reslr/reslr_mcmc_old.R")
 
 # =========================================================
 # GLOBAL SETTINGS
@@ -206,12 +312,12 @@ GIA <- c(
 # =========================================================
 
 site_files <- c(
-  Malin_Head = "Data/Malin_Head_reslr.csv",
-  Belfast    = "Data/Belfast_reslr.csv",
-  Dublin_Port = "Data/Dublin_Port_reslr.csv",
-  Galway     = "Data/Galway_reslr.csv",
-  Cork       = "Data/Cork_reslr.csv",
-  Tarbert    = "Data/Tarbert_reslr.csv"
+  Malin_Head = "Malin_Head_reslr.csv",
+  Belfast    = "Belfast_reslr.csv",
+  Dublin_Port = "Dublin_Port_reslr.csv",
+  Galway     = "Galway_reslr.csv",
+  Cork       = "Cork_reslr.csv",
+  Tarbert    = "Tarbert_reslr.csv"
 )
 
 site_list <- lapply(
@@ -371,66 +477,26 @@ ggsave(
 
 
 # =========================================================
-# RESLR MODEL OUTPUT
+# RUN RESLR MODEL
 # =========================================================
 
-# Set to FALSE to use the archived model output from Zenodo.
-#
-# Set to TRUE if you want to rerun the RESLR model from
-# the input data and generate a new model_output_setup2.RDS.
-#
-# FALSE is recommended for reproducing the published
-# analysis using the archived model output.
-
-RERUN_MODEL <- FALSE
+output <- reslr_mcmc_old(
+  input,
+  model_type = "ni_gam_decomp",
+  spline_nseg_t = 2,
+  spline_nseg_st = 1
+)
 
 
-if (RERUN_MODEL) {
+# =========================================================
+# SAVE MODEL OUTPUT
+# =========================================================
 
-  # =======================================================
-  # RUN RESLR MODEL FROM SCRATCH
-  # =======================================================
+saveRDS(
+  output,
+  "model_output_setup2.RDS"
+)
 
-  message(
-    "\nRunning RESLR model from input data.\n",
-    "This may take a substantial amount of time.\n"
-  )
-
-  output <- reslr_mcmc_old(
-    input,
-    model_type = "ni_gam_decomp",
-    spline_nseg_t = 2,
-    spline_nseg_st = 1
-  )
-
-  # Save the newly generated model output locally
-  saveRDS(
-    output,
-    MODEL_OUTPUT_FILE
-  )
-
-  message(
-    "\nNew model output saved to: ",
-    MODEL_OUTPUT_FILE,
-    "\n"
-  )
-
-
-} else {
-
-  # =======================================================
-  # LOAD ARCHIVED MODEL OUTPUT FROM ZENODO
-  # =======================================================
-
-  message(
-    "\nLoading archived RESLR model output.\n"
-  )
-
-  output <- readRDS(
-    MODEL_OUTPUT_FILE
-  )
-
-}
 
 # =========================================================
 # EXTRACT TOTAL MODEL DATA
@@ -3686,7 +3752,6 @@ ggsave(
   bg = "white"
 )
 
-
 # =========================================================
 # PART D: CROSS-VALIDATION
 # =========================================================
@@ -4212,4 +4277,3 @@ if (age_available) {
 # =========================================================
 # END OF PART D: CROSS-VALIDATION
 # =========================================================
-
