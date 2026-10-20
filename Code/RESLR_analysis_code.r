@@ -151,12 +151,6 @@ library(dplyr)
 # =========================================================
 # WORKING DIRECTORY + ZENODO MODEL OUTPUT
 # =========================================================
-
-# The large model-output file is stored on Zenodo rather than
-# GitHub because the file is too large for the repository.
-#
-# Zenodo record:
-# https://zenodo.org/records/23085723
 #
 # The script downloads the file automatically if it is not
 # already present in the Data folder.
@@ -164,52 +158,6 @@ library(dplyr)
 # IMPORTANT:
 # Run this script with the GitHub repository root as the
 # working directory.
-
-MODEL_OUTPUT_FILE <- file.path(
-  "Data",
-  "model_output_setup2.RDS"
-)
-
-ZENODO_MODEL_URL <- paste0(
-  "https://zenodo.org/records/23085723/files/",
-  "model_output_setup2.RDS?download=1"
-)
-
-# Check that the Data folder exists
-if (!dir.exists("Data")) {
-  dir.create("Data", recursive = TRUE)
-}
-
-# Download the model output from Zenodo if it is not
-# already present locally
-if (!file.exists(MODEL_OUTPUT_FILE)) {
-
-  message(
-    "\nmodel_output_setup2.RDS was not found locally.\n",
-    "Downloading the model output from Zenodo.\n",
-    "The file is large and this may take some time.\n"
-  )
-
-  download.file(
-    url = ZENODO_MODEL_URL,
-    destfile = MODEL_OUTPUT_FILE,
-    mode = "wb"
-  )
-}
-
-# Check that the model output now exists
-if (!file.exists(MODEL_OUTPUT_FILE)) {
-  stop(
-    "model_output_setup2.RDS could not be found or downloaded."
-  )
-}
-
-message(
-  "\nUsing model output: ",
-  MODEL_OUTPUT_FILE,
-  "\n"
-)
-
 # Reproducible random operations
 set.seed(1234)
 
