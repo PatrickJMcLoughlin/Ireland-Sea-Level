@@ -3921,6 +3921,20 @@ if (!age_available) {
 
 
 # =========================================================
+# CORRECT REVERSED PREDICTION INTERVAL BOUNDS
+# =========================================================
+# The returned lwr_PI and upr_PI columns are reversed.
+# Order the two bounds for plotting and interval diagnostics.
+# This does not change predictions or residual calculations.
+
+cv_data <- cv_data %>%
+  mutate(
+    PI_lower = pmin(lwr_PI, upr_PI),
+    PI_upper = pmax(lwr_PI, upr_PI)
+  )
+
+
+# =========================================================
 # CALCULATE PREDICTION ERRORS
 # =========================================================
 
@@ -4071,15 +4085,15 @@ cv_plot <- ggplot(
 ) +
 
   geom_errorbar(
-    aes(
-      ymin = pmin(lwr_PI, upr_PI),
-      ymax = pmax(lwr_PI, upr_PI)
-    ),
-    width = 0,
-    colour = "grey40",
-    alpha = 0.6,
-    na.rm = TRUE
-  ) +
+    aes(
+      ymin = PI_lower,
+      ymax = PI_upper
+    ),
+    width = 0,
+    colour = "grey40",
+    alpha = 0.6,
+    na.rm = TRUE
+  ) +
 
   geom_point(
     colour = "red",
@@ -4292,3 +4306,4 @@ if (age_available) {
 # =========================================================
 # END OF PART D: CROSS-VALIDATION
 # =========================================================
+
