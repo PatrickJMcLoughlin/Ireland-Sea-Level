@@ -1326,16 +1326,25 @@ print(site_rates)
 
 # =========================================================
 # SAVE SITE TOTAL MEAN RATES
+# Site Specific Rates
 # =========================================================
 
+site_rates_print <- site_rates %>%
+  dplyr::mutate(
+    mean_rate = round(mean_rate, 3),
+    CI_low    = round(CI_low, 3),
+    CI_high   = round(CI_high, 3)
+  )
+
 write.csv(
-  site_rates,
+  site_rates_print,
   file.path(
     plot_dir,
     "extended_grid_total_mean_site_rates_CI.csv"
   ),
   row.names = FALSE
 )
+
 
 
 # =========================================================
