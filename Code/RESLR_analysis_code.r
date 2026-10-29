@@ -3308,24 +3308,33 @@ print(dublin_rates)
 # =========================================================
 
 
+
 # =========================================================
 # PART B: CUMULATIVE SEA-LEVEL CHANGE, 1925–2024
 # =========================================================
-# Calculates the cumulative change in the Ireland six-site
-# mean of the total modelled RSL between 1925 and 2024.
+# Calculates cumulative change in the Ireland six-site mean
+# of total modelled RSL between 1925 and 2024.
 #
 # Uses:
 #   mu_pred = total modelled RSL posterior
 #
-# Results are reported in centimetres with 95% credible
-# intervals calculated directly from the posterior draws.
-# ============================================================
+# Results are reported in centimetres, with 95% credible
+# intervals calculated directly from posterior draws.
+# =========================================================
 
-idx_1925 <- which(grid$Age == 1925)
-idx_2024 <- which(grid$Age == 2024)
+# Use the full prediction grid, not the 1925–2000 grid
+
+full_grid <- output$output_dataframes$total_model_df
+
+idx_1925 <- which(full_grid$Age == 1925)
+idx_2024 <- which(full_grid$Age == 2024)
+
+# Check that both years contain six site-level rows
 
 stopifnot(length(idx_1925) == 6)
 stopifnot(length(idx_2024) == 6)
+
+# Extract the posterior RSL at each endpoint
 
 mu_1925 <- rowMeans(
   mu[, idx_1925, drop = FALSE],
@@ -3337,17 +3346,26 @@ mu_2024 <- rowMeans(
   na.rm = TRUE
 )
 
+# Calculate cumulative change in centimetres
+
 cumulative_change_cm <- (mu_2024 - mu_1925) * 100
+
+# Summarise posterior estimates and 95% credible interval
 
 cumulative_change_summary <- tibble(
   start_year = 1925,
   end_year = 2024,
   total_change_cm = mean(cumulative_change_cm, na.rm = TRUE),
-  CI_low_cm = quantile(cumulative_change_cm, 0.025, na.rm = TRUE),
-  CI_high_cm = quantile(cumulative_change_cm, 0.975, na.rm = TRUE)
+  CI_low_cm = quantile(
+    cumulative_change_cm, 0.025, na.rm = TRUE
+  ),
+  CI_high_cm = quantile(
+    cumulative_change_cm, 0.975, na.rm = TRUE
+  )
 )
 
 print(cumulative_change_summary)
+
 
 # =========================================================
 # PART C: IRELAND RSL VS GLOBAL SEA LEVEL
