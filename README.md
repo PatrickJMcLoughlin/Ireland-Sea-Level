@@ -10,4 +10,4 @@ Users should record their software versions and assess model convergence when re
 
 GitHub repository: contains the analysis code, input datasets, and supporting RESLR files.
 Additional code: Other code associated with the paper may be requested from the author at patrick.mcloughlin.2014@mumail.ie.
-Paper: A Century of Sea-Level Change in Ireland (1925–2024) — link TBC.
+Paper: A Century of Sea-Level Change in Ireland (1925–2024). Link : https://os.copernicus.org/articles/22/3499/2026/os-22-3499-2026-assets.html 
