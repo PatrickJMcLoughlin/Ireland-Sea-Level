@@ -1331,16 +1331,16 @@ print(site_rates)
 
 site_rates_print <- site_rates %>%
   dplyr::mutate(
-    mean_rate = round(mean_rate, 3),
-    CI_low    = round(CI_low, 3),
-    CI_high   = round(CI_high, 3)
+    mean_rate = round(mean_rate, 5),
+    CI_low    = round(CI_low, 5),
+    CI_high   = round(CI_high, 5)
   )
 
 write.csv(
   site_rates_print,
   file.path(
     plot_dir,
-    "extended_grid_total_mean_site_rates_CI.csv"
+    "Site_rates.csv"
   ),
   row.names = FALSE
 )
@@ -1439,7 +1439,7 @@ write.csv(
   yearly_site_rates,
   file.path(
     plot_dir,
-    "extended_grid_total_yearly_site_rates_CI.csv"
+    "yearly_site_rates_CI.csv"
   ),
   row.names = FALSE
 )
@@ -1497,21 +1497,6 @@ cat("=========================================================\n")
 
 print(regional_rate)
 
-
-# =========================================================
-# SAVE REGIONAL RATE
-# =========================================================
-
-write.csv(
-  regional_rate,
-  file.path(
-    plot_dir,
-    "regional_mean_rate_CI.csv"
-  ),
-  row.names = FALSE
-)
-
-
 # =========================================================
 # 5. CENTURY MEAN TOTAL RATE -- ALL SITES
 # =========================================================
@@ -1559,20 +1544,6 @@ cat("TOTAL POSTERIOR RATE\n")
 cat("=========================================================\n")
 
 print(total_regional_rate)
-
-
-# =========================================================
-# SAVE TOTAL RATE
-# =========================================================
-
-write.csv(
-  total_regional_rate,
-  file.path(
-    plot_dir,
-    "total_mean_rate_CI.csv"
-  ),
-  row.names = FALSE
-)
 
 
 # =========================================================
@@ -2438,20 +2409,6 @@ print(
 
 
 # =========================================================
-# SAVE SITE-AVERAGED RATE TABLE
-# =========================================================
-
-write.csv(
-  total_rate_single,
-  file.path(
-    plot_dir,
-    "site_averaged_total_rate_posterior_CI.csv"
-  ),
-  row.names = FALSE
-)
-
-
-# =========================================================
 # 19. PLOT SITE-AVERAGED TOTAL RATE
 # =========================================================
 
@@ -2914,105 +2871,6 @@ write.csv(
   file.path(
     plot_dir,
     "regional_total_period_rate_summary.csv"
-  ),
-  row.names = FALSE
-)
-
-
-# =========================================================
-# ADDITIONAL POSTERIOR GRID TABLES
-# =========================================================
-
-write.csv(
-  total_rate_grid %>%
-    filter(
-      Age >= MODEL_START,
-      Age <= MODEL_END
-    ) %>%
-    select(
-      SiteName,
-      Site_clean,
-      Age,
-      rate_pred = pred,
-      rate_lwr = CI_low,
-      rate_upr = CI_high
-    ),
-  file.path(
-    plot_dir,
-    "posterior_total_rate_grid_CI.csv"
-  ),
-  row.names = FALSE
-)
-
-write.csv(
-  regional_rate_grid %>%
-    filter(
-      Age >= MODEL_START,
-      Age <= MODEL_END
-    ) %>%
-    select(
-      SiteName,
-      Site_clean,
-      Age,
-      rate_pred = pred,
-      rate_lwr = CI_low,
-      rate_upr = CI_high
-    ),
-  file.path(
-    plot_dir,
-    "posterior_regional_rate_grid_CI.csv"
-  ),
-  row.names = FALSE
-)
-
-
-# =========================================================
-# LINEAR LOCAL RATE POSTERIOR GRID TABLE
-# =========================================================
-
-write.csv(
-  linear_rate_grid %>%
-    filter(
-      Age >= MODEL_START,
-      Age <= MODEL_END
-    ) %>%
-    select(
-      SiteName,
-      Site_clean,
-      Age,
-      rate_pred = pred,
-      rate_lwr = CI_low,
-      rate_upr = CI_high
-    ),
-  file.path(
-    plot_dir,
-    "posterior_linear_local_rate_grid_CI.csv"
-  ),
-  row.names = FALSE
-)
-
-
-# =========================================================
-# NON-LINEAR LOCAL RATE POSTERIOR GRID TABLE
-# =========================================================
-
-write.csv(
-  nonlinear_rate_grid %>%
-    filter(
-      Age >= MODEL_START,
-      Age <= MODEL_END
-    ) %>%
-    select(
-      SiteName,
-      Site_clean,
-      Age,
-      rate_pred = pred,
-      rate_lwr = CI_low,
-      rate_upr = CI_high
-    ),
-  file.path(
-    plot_dir,
-    "posterior_nonlinear_local_rate_grid_CI.csv"
   ),
   row.names = FALSE
 )
@@ -4038,38 +3896,6 @@ cat("\nSite-Level Cross-Validation Error Metrics\n")
 cat("-----------------------------------------\n")
 
 print(site_metrics)
-
-
-# =========================================================
-# SAVE ERROR METRICS
-# =========================================================
-
-# These CSV files are additional outputs from the revised
-# version. They use the existing cross-validation directory.
-
-write.csv(
-  site_metrics,
-  file.path(
-    plot_folder,
-    "cross_validation_site_error_metrics.csv"
-  ),
-  row.names = FALSE
-)
-
-write.csv(
-  data.frame(
-    n = n_valid,
-    n_excluded = n_excluded,
-    ME = ME_overall,
-    MAE = MAE_overall,
-    RMSE = RMSE_overall
-  ),
-  file.path(
-    plot_folder,
-    "cross_validation_overall_error_metrics.csv"
-  ),
-  row.names = FALSE
-)
 
 
 # =========================================================
