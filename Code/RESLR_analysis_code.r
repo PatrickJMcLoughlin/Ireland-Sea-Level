@@ -4142,3 +4142,220 @@ if (age_available) {
 # END OF PART D: CROSS-VALIDATION
 # =========================================================
 
+
+# =========================================================
+# SUPPLEMENTARY CODE RELATED TO PART C
+# Posterior Rate Estimates
+# =========================================================
+#
+# This supplementary code relates to Part C of the analysis
+# but is provided at the end of this script for completeness.
+#
+# Part 1:
+# Estimates mean posterior rates and 95% credible intervals
+# for the six study sites over 1925–2000.
+#
+# Part 2:
+# Calculates mean posterior rates and 95% credible intervals
+# for selected comparison periods at Dublin Port, including
+# intervals used to compare the reconstruction with
+# published literature.
+#
+# The analysis uses posterior rate draws from the model
+# prediction output. Results represent average modelled
+# rates over the selected intervals, not cumulative
+# sea-level changes.
+#
+# =========================================================
+
+
+# ---------------------------------------------------------
+# 1. Prepare prediction grid for 1925–2000
+# ---------------------------------------------------------
+
+full_grid <- output$output_dataframes$total_model_df
+
+full_grid <- full_grid %>%
+  mutate(
+    Site_clean = case_when(
+      grepl("Belfast", SiteName) ~ "Belfast",
+      grepl("Cork", SiteName) ~ "Cork",
+      grepl("Dublin", SiteName) ~ "Dublin_Port",
+      grepl("Malin", SiteName) ~ "Malin_Head",
+      grepl("Galway", SiteName) ~ "Galway",
+      grepl("Tarbert", SiteName) ~ "Tarbert",
+      TRUE ~ SiteName
+    )
+  )
+
+grid <- full_grid %>%
+  filter(Age >= 1925, Age <= 2000)
+
+
+# ---------------------------------------------------------
+# 2. Match posterior rate matrix to filtered grid
+# ---------------------------------------------------------
+
+keep <- which(
+  full_grid$Age >= 1925 &
+    full_grid$Age <= 2000
+)
+
+mu_rate_sub <- mu_rate[, keep, drop = FALSE]
+
+# Check that the posterior rate matrix matches the grid size.
+stopifnot(ncol(mu_rate_sub) == nrow(grid))
+
+
+# ---------------------------------------------------------
+# 3. Create site index
+# ---------------------------------------------------------
+
+site_index <- split(
+  seq_len(nrow(grid)),
+  grid$Site_clean
+)
+
+
+# ---------------------------------------------------------
+# 4. Calculate posterior rates for each site, 1925–2000
+# ---------------------------------------------------------
+
+site_rates <- lapply(names(site_index), function(s) {
+
+  idx <- site_index[[s]]
+
+  # Average rates across the selected years for each draw.
+  draws <- rowMeans(
+    mu_rate_sub[, idx, drop = FALSE]
+  )
+
+  tibble(
+    Site = s,
+    mean_rate = mean(draws),
+    CrI_low = unname(quantile(draws, 0.025)),
+    CrI_high = unname(quantile(draws, 0.975)),
+    n_years = length(idx)
+  )
+
+}) %>%
+  bind_rows()
+
+print(site_rates)
+
+
+# ---------------------------------------------------------
+# 5. Prepare Dublin Port prediction grid
+# ---------------------------------------------------------
+
+dublin_grid <- full_grid %>%
+  filter(Site_clean == "Dublin_Port")
+
+
+# ---------------------------------------------------------
+# 6. Match posterior rate matrix to Dublin Port rows
+# ---------------------------------------------------------
+
+dublin_idx <- which(
+  full_grid$Site_clean == "Dublin_Port"
+)
+
+mu_dublin <- mu_rate[, dublin_idx, drop = FALSE]
+
+# Check that the Dublin posterior matrix matches its grid.
+stopifnot(ncol(mu_dublin) == nrow(dublin_grid))
+
+
+# ---------------------------------------------------------
+# 7. Define function to calculate rates over a period
+# ---------------------------------------------------------
+
+calc_rate <- function(start_year, end_year) {
+
+  # Identify grid rows within the inclusive period.
+  idx <- which(
+    dublin_grid$Age >= start_year &
+      dublin_grid$Age <= end_year
+  )
+
+  # Stop if the requested period contains no grid rows.
+  if (length(idx) == 0) {
+    stop(
+      "No prediction-grid rows found for ",
+      start_year, "-", end_year,
+      ". Check the available prediction years."
+    )
+  }
+
+  # Average rates across the selected years for each draw.
+  draws <- rowMeans(
+    mu_dublin[, idx, drop = FALSE]
+  )
+
+  tibble(
+    Period = paste0(start_year, "-", end_year),
+    mean_rate = mean(draws),
+    CrI_low = unname(quantile(draws, 0.025)),
+    CrI_high = unname(quantile(draws, 0.975)),
+    n_years = length(idx)
+  )
+}
+
+
+# ---------------------------------------------------------
+# 8. Calculate rates for selected Dublin Port periods
+# ---------------------------------------------------------
+
+dublin_rates <- bind_rows(
+  calc_rate(1925, 2024),
+  calc_rate(1925, 2000),
+  calc_rate(2000, 2016),
+  calc_rate(1953, 2016),
+  calc_rate(1938, 1961),
+  calc_rate(1961, 1980),
+  calc_rate(1938, 1996)
+)
+
+
+# ---------------------------------------------------------
+# 9. Extract instantaneous rate for 2024
+# ---------------------------------------------------------
+
+idx_2024 <- which(
+  dublin_grid$Age == 2024
+)
+
+# Check that exactly one prediction-grid row exists for 2024.
+if (length(idx_2024) != 1) {
+  stop(
+    "Expected exactly one Dublin Port prediction-grid row ",
+    "for 2024, but found ", length(idx_2024), "."
+  )
+}
+
+draws_2024 <- mu_dublin[, idx_2024]
+
+dublin_2024 <- tibble(
+  Period = "2024 instantaneous",
+  mean_rate = mean(draws_2024),
+  CrI_low = unname(quantile(draws_2024, 0.025)),
+  CrI_high = unname(quantile(draws_2024, 0.975)),
+  n_years = 1
+)
+
+
+# ---------------------------------------------------------
+# 10. Combine and print Dublin Port results
+# ---------------------------------------------------------
+
+dublin_rates <- bind_rows(
+  dublin_rates,
+  dublin_2024
+)
+
+print(dublin_rates)
+
+
+# =========================================================
+# End of supplementary posterior rate analysis
+# =========================================================
