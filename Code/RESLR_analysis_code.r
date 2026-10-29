@@ -4137,19 +4137,20 @@ if (age_available) {
 #
 # Part 1:
 # Estimates mean posterior rates and 95% credible intervals
-# for the six study sites over 1925–2000.
+# for the six study sites over 1925–2000 with the results
+# presented in the associated paper.
 #
 # Part 2:
 # Calculates mean posterior rates and 95% credible intervals
 # for selected comparison periods at Dublin Port, including
 # intervals used to compare the reconstruction with
-# published literature.
+# published literature discussed in the paper's Discussion
+# section.
 #
 # The analysis uses posterior rate draws from the model
-# prediction output. Results represent average modelled
-# rates over the selected intervals, not cumulative
+# prediction output. Results represent mean modelled rates
+# over the selected intervals, rather than cumulative
 # sea-level changes.
-#
 # =========================================================
 
 
